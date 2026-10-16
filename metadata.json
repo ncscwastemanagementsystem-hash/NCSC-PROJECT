@@ -1,0 +1,6 @@
+{
+  "name": "NCSC Project Vault",
+  "description": "Secure private scientific repository and project management vault for NCSC (National Children's Science Congress) projects with file uploads, 3D simulations, and admin security.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Waste-to-Resource System — 3D Science Exhibition Simulation</title>
+<style>
+:root{
+  --bg:#071018; --panel:rgba(12,24,35,.92); --panel2:rgba(17,34,47,.94);
+  --line:rgba(139,205,231,.25); --text:#eaf7ff; --muted:#9db5c2;
+  --cyan:#49d7ff; --green:#65e69a; --amber:#ffd166; --red:#ff6b7a; --blue:#72a7ff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:radial-gradient(circle at 50% 20%,#173348,#050b10 65%);font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--text)}
+#app{position:fixed;inset:0}
+canvas{display:block}
+#hud{position:absolute;inset:0;pointer-events:none}
+.panel{background:linear-gradient(145deg,rgba(13,29,42,.96),rgba(5,15,23,.91));border:1px solid var(--line);box-shadow:0 14px 45px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.05);backdrop-filter:blur(12px);border-radius:14px}
+#topbar{position:absolute;left:16px;right:16px;top:14px;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;pointer-events:auto}
+.title{font-weight:800;letter-spacing:.08em;font-size:clamp(15px,2vw,22px)}
+.subtitle{font-size:11px;color:var(--muted);margin-top:3px;letter-spacing:.05em}
+.status{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 13px var(--green)}
+#controls{position:absolute;left:16px;top:92px;width:292px;padding:13px;pointer-events:auto}
+h3{font-size:12px;text-transform:uppercase;letter-spacing:.13em;margin:0 0 9px;color:#bcecff}
+label{font-size:11px;color:var(--muted)}
+select,button{width:100%;border:1px solid rgba(129,207,232,.23);background:#0b1b27;color:var(--text);border-radius:9px;padding:9px 10px;margin:5px 0;font-weight:650;cursor:pointer}
+button:hover,select:hover{border-color:var(--cyan);background:#102737}
+button:active{transform:translateY(1px)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.small{font-size:10px;padding:7px}
+#telemetry{margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}
+.row{display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:4px 0}
+.value{font-weight:800;color:#dff7ff}
+#ai{position:absolute;right:16px;top:92px;width:292px;padding:13px;pointer-events:none}
+.mode{font-size:10px;color:var(--muted);margin-bottom:8px}
+.barRow{margin:8px 0}
+.barHead{display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px}
+.bar{height:7px;background:#08131b;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.06)}
+.fill{height:100%;width:0%;border-radius:10px;transition:width .5s}
+#wetFill{background:var(--green)} #plasticFill{background:var(--blue)} #otherFill{background:var(--amber)} #unknownFill{background:var(--red)}
+#dashboard{position:absolute;right:16px;bottom:16px;width:292px;padding:13px;pointer-events:auto}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.stat{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06);border-radius:9px;padding:8px}
+.stat b{display:block;font-size:17px;margin-top:3px}
+.stat span{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.accuracy{margin-top:9px;padding:8px;border-radius:9px;background:rgba(101,230,154,.07);border:1px solid rgba(101,230,154,.16);font-size:11px}
+#info{position:absolute;left:16px;bottom:16px;width:292px;max-height:37vh;overflow:auto;padding:13px;pointer-events:auto;display:none}
+#info.show{display:block}
+#infoTitle{font-size:15px;font-weight:800;margin-bottom:7px}
+.infoLabel{font-size:9px;text-transform:uppercase;color:var(--cyan);letter-spacing:.12em;margin-top:8px}
+.infoText{font-size:11px;line-height:1.45;color:#c8dbe4}
+#modal{position:absolute;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;pointer-events:auto}
+#modal.show{display:flex}
+.modalBox{width:min(720px,92vw);max-height:82vh;overflow:auto;padding:20px}
+.modalBox h2{margin:0 0 12px;font-size:21px}
+.step{display:grid;grid-template-columns:38px 1fr;gap:10px;margin:10px 0;padding:9px;border-radius:10px;background:rgba(255,255,255,.035)}
+.stepNo{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#103348;color:var(--cyan);font-weight:800}
+.close{float:right;width:auto;padding:6px 10px}
+#flow{position:absolute;left:50%;transform:translateX(-50%);bottom:17px;width:min(590px,42vw);pointer-events:none;padding:9px 12px}
+.flowLine{display:flex;align-items:center;justify-content:space-between;gap:5px;font-size:8px;text-align:center;color:#91a9b5}
+.flowNode{flex:1;padding:5px 2px;border:1px solid rgba(255,255,255,.08);border-radius:7px;background:rgba(255,255,255,.025);transition:.25s}
+.flowNode.active{border-color:var(--cyan);color:#fff;box-shadow:0 0 14px rgba(73,215,255,.25)}
+.arrow{color:#4e7180}
+#toast{position:absolute;left:50%;top:80px;transform:translateX(-50%) translateY(-10px);opacity:0;padding:9px 15px;border-radius:20px;background:#0d2634;border:1px solid rgba(73,215,255,.35);font-size:11px;transition:.25s;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#warning{position:absolute;left:50%;bottom:88px;transform:translateX(-50%);max-width:min(720px,62vw);padding:8px 12px;text-align:center;font-size:9px;color:#ffdca1;background:rgba(69,43,10,.78);border:1px solid rgba(255,209,102,.28);border-radius:8px;pointer-events:none}
+#labelsHint{position:absolute;right:320px;bottom:19px;font-size:9px;color:#8099a5}
+@media(max-width:1000px){
+  #controls,#ai{width:235px}.flowLine{font-size:7px}.warning{max-width:50vw}
+}
+@media(max-width:760px){
+  #controls{top:82px;left:8px;width:190px}.panel{border-radius:10px}
+  #ai{top:82px;right:8px;width:190px}
+  #dashboard{right:8px;bottom:8px;width:210px}
+  #info{left:8px;bottom:8px;width:210px}
+  #flow{display:none} #warning{bottom:8px;max-width:45vw;font-size:8px}
+  #topbar{left:8px;right:8px}.subtitle{display:none}
+}
+
+#recoveryPanel .rStep{padding:5px 7px;border-radius:7px;background:rgba(255,255,255,.06);
+border:1px solid rgba(255,255,255,.08);font-size:10px;color:#b8cad5}
+#recoveryPanel .rStep.active{background:rgba(80,210,160,.14);border-color:rgba(80,220,170,.5);color:#dffff0;
+box-shadow:0 0 12px rgba(80,220,170,.12)}
+#recoveryPanel .rStep.fuel{background:rgba(255,160,80,.12);border-color:rgba(255,160,80,.45);color:#ffe1c3}
+.recoveryPulse{filter:drop-shadow(0 0 7px currentColor)}
+@media(max-width:900px){#recoveryPanel{width:300px;left:10px;bottom:10px}}
+</style>
+<style id="advancedViewCSS">
+#viewDock{position:fixed;right:18px;top:18px;z-index:80;width:245px;padding:13px;border:1px solid #6ee7ff55;border-radius:16px;background:rgba(5,12,18,.88);backdrop-filter:blur(14px);box-shadow:0 18px 55px #0009;color:#eafaff;font:12px Segoe UI,Arial,sans-serif}
+#viewDock .vd-title{font-size:15px;font-weight:800;letter-spacing:.8px;margin-bottom:9px}
+#viewDock .vd-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#viewDock button,#themeSelect{width:100%;box-sizing:border-box;padding:8px 6px;border:1px solid #62dcff44;border-radius:9px;background:#0c202b;color:#e7faff;font-weight:750;font-size:10px;cursor:pointer}
+#viewDock button:hover,#viewDock button.active{background:#164152;border-color:#6ee7ff;box-shadow:0 0 16px #55dfff33}
+#themeSelect{margin-top:8px;font-size:11px}
+#viewReadout{margin-top:9px;color:#9fc2cd;line-height:1.35}
+@media(max-width:800px){#viewDock{right:7px;top:7px;width:205px}}
+</style>
+
+<style id="mega-settings-css">
+.settings-launch{position:fixed;right:22px;bottom:22px;z-index:9000;border:1px solid rgba(91,224,255,.45);background:rgba(7,16,27,.97);color:#e5fbff;padding:11px 17px;border-radius:9px;font-size:10px;font-weight:900;letter-spacing:.14em;cursor:pointer;box-shadow:0 10px 30px #0007}.settings-launch:hover{border-color:#55e8ff;transform:translateY(-1px)}
+.settings-modal{position:fixed;inset:0;z-index:10000;display:none}.settings-modal.open{display:block}.settings-backdrop{position:absolute;inset:0;background:#01050bcc;backdrop-filter:blur(9px)}
+.mega-settings{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(1160px,calc(100vw - 28px));height:min(760px,calc(100vh - 28px));display:flex;flex-direction:column;overflow:hidden;background:#09131f;border:1px solid #63ddfa40;border-radius:16px;box-shadow:0 35px 120px #000c;color:#eafaff}
+.mega-header{height:82px;flex:0 0 82px;display:flex;align-items:center;justify-content:space-between;padding:0 23px;border-bottom:1px solid #ffffff12;background:linear-gradient(90deg,#14283a66,#07111c33)}.mega-identity{display:flex;align-items:center;gap:12px}.mega-logo{width:37px;height:37px;border:1px solid #57dffb;border-radius:8px;display:grid;place-items:center;color:#64e7ff;font-size:11px;font-weight:900}.mega-overline{font-size:7px;color:#57dffb;letter-spacing:.2em;font-weight:900}.mega-header h2{margin:4px 0 2px;font-size:19px;letter-spacing:.09em}.mega-header p{margin:0;color:#78909e;font-size:9px}.mega-header-actions{display:flex;align-items:center;gap:14px}.system-state{display:flex;align-items:center;gap:7px;color:#7e9aa6;font-size:8px;letter-spacing:.1em}.system-state span{width:7px;height:7px;border-radius:50%;background:#4de3ff;box-shadow:0 0 10px #4de3ff}.mega-close{width:33px;height:33px;border:1px solid #ffffff1a;background:#ffffff05;border-radius:8px;color:#dceff4;font-size:21px;cursor:pointer}
+.mega-layout{display:flex;flex:1;min-height:0}.mega-categories{width:205px;flex:0 0 205px;padding:17px 11px;border-right:1px solid #ffffff10;background:#030a12aa}.category-title{font-size:7px;color:#536b78;letter-spacing:.18em;font-weight:900;padding:0 9px 10px}.mega-category{width:100%;display:flex;align-items:center;gap:10px;text-align:left;padding:11px 9px;margin-bottom:4px;border:1px solid transparent;border-radius:8px;background:transparent;color:#718994;cursor:pointer}.mega-category strong{font-size:8px;color:#4e6976;width:19px}.mega-category b{display:block;font-size:9px;letter-spacing:.1em}.mega-category small{display:block;font-size:8px;color:#526d79;margin-top:3px}.mega-category.active{background:#28b9d914;border-color:#4dddfb2d;color:#e8fbff}.mega-category.active strong{color:#55e3ff}.mega-category.active small{color:#789ba8}
+.mega-content{flex:1;overflow:auto}.mega-section{display:none;padding:24px 27px}.mega-section.active{display:block}.mega-section-head>div>span{font-size:7px;color:#58dff9;letter-spacing:.17em;font-weight:900}.mega-section-head h3{margin:5px 0 4px;font-size:17px;letter-spacing:.08em}.mega-section-head p{margin:0 0 21px;color:#758e9b;font-size:9px}.mega-subtitle{font-size:8px;letter-spacing:.16em;color:#68808c;font-weight:900;margin:0 0 10px}.theme-heading{margin-top:24px}.mega-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.mega-card{position:relative;min-height:91px;text-align:left;border:1px solid #ffffff12;background:#ffffff04;color:#e7f8fc;border-radius:10px;padding:14px;cursor:pointer}.mega-card:hover{border-color:#52dcf94d;background:#32bdd20a}.mega-card.active{border-color:#4bdffb;background:linear-gradient(135deg,#2bb9d91b,#ffffff04);box-shadow:inset 3px 0 #4bdffb}.mega-card b{display:block;font-size:11px;letter-spacing:.09em}.mega-card small{display:block;color:#8199a4;font-size:9px;margin-top:6px;max-width:75%}.mega-card em{position:absolute;right:10px;bottom:10px;font-style:normal;font-size:7px;color:#4da7b9;border:1px solid #4da7b92b;border-radius:4px;padding:3px 5px}
+.mega-list{border:1px solid #ffffff10;border-radius:10px;overflow:hidden}.mega-toggle{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:15px 16px;border-bottom:1px solid #ffffff0d;cursor:pointer}.mega-toggle:last-child{border-bottom:0}.mega-toggle b{display:block;font-size:10px}.mega-toggle small{display:block;color:#708994;font-size:8px;margin-top:4px}.mega-toggle input{display:none}.mega-toggle i{width:35px;height:19px;border-radius:20px;background:#263640;position:relative;flex:0 0 35px}.mega-toggle i:after{content:"";position:absolute;left:3px;top:3px;width:13px;height:13px;border-radius:50%;background:#82939b;transition:.18s}.mega-toggle input:checked+i{background:#147f93}.mega-toggle input:checked+i:after{left:19px;background:#e2fbff}
+.mega-callout{margin-top:14px;border-left:2px solid #4bdffb;background:#28bdd20a;padding:12px 14px}.mega-callout b{display:block;font-size:8px;color:#62e4fa;letter-spacing:.12em}.mega-callout span{display:block;color:#8199a5;font-size:8px;margin-top:4px;line-height:1.5}.system-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}.system-summary div{border:1px solid #ffffff10;border-radius:9px;padding:16px;background:#ffffff04}.system-summary span{display:block;color:#58717d;font-size:7px;letter-spacing:.14em}.system-summary b{display:block;margin-top:7px;font-size:11px}.mega-reset{border:1px solid #e7a05a55;background:#7c43150c;color:#ffc88f;padding:13px 15px;border-radius:8px;font-size:9px;font-weight:900;letter-spacing:.08em;cursor:pointer}.mega-reset:hover{border-color:#e7a05a;color:#ffd7ae}
+.mega-footer{height:64px;flex:0 0 64px;display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:0 18px;border-top:1px solid #ffffff10;background:#06101a}.mega-active{margin-right:auto;display:flex;align-items:center;gap:9px}.mega-active>span{width:7px;height:7px;border-radius:50%;background:#4de3ff;box-shadow:0 0 10px #4de3ff}.mega-active small{display:block;color:#526d78;font-size:6px;letter-spacing:.16em}.mega-active b{display:block;font-size:8px;letter-spacing:.08em;margin-top:3px}.mega-cancel,.mega-apply{height:31px;border-radius:7px;padding:0 13px;font-size:8px;font-weight:900;letter-spacing:.08em;cursor:pointer}.mega-cancel{border:1px solid #ffffff17;background:transparent;color:#8ba1aa}.mega-apply{border:1px solid #4bdffb66;background:#103642;color:#dffaff}
+@media(max-width:720px){.mega-settings{width:calc(100vw - 12px);height:calc(100vh - 12px)}.mega-categories{width:150px;flex-basis:150px}.mega-section{padding:18px}.mega-grid{grid-template-columns:1fr}.system-summary{grid-template-columns:1fr}.mega-header{padding:0 13px}.mega-header p{display:none}}
+</style>
+
+<style id="mega-v7-upgrade-css">
+.mega-quickbar{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 18px}
+.mega-quickbar button{width:auto;margin:0;padding:7px 10px;border:1px solid #ffffff14;background:#ffffff05;color:#9fb5bf;border-radius:7px;font-size:7px;font-weight:900;letter-spacing:.09em;cursor:pointer}
+.mega-quickbar button:hover{border-color:#4bdffb66;color:#eaffff;background:#28bdd20d}
+.mega-live{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px}
+.mega-live .live-card{border:1px solid #ffffff10;border-radius:9px;padding:10px;background:#ffffff04}
+.mega-live span{display:block;color:#536d79;font-size:6px;letter-spacing:.15em;font-weight:900}
+.mega-live b{display:block;margin-top:5px;font-size:9px;color:#dffaff}
+.mega-live i{display:inline-block;width:5px;height:5px;border-radius:50%;background:#4de3ff;box-shadow:0 0 8px #4de3ff;margin-right:5px}
+.mega-card.active:after{content:"ACTIVE";position:absolute;top:8px;right:9px;font-size:6px;letter-spacing:.12em;color:#66e6ff}
+.mega-section-head{position:relative}
+@media(max-width:760px){.mega-live{grid-template-columns:1fr 1fr}.mega-quickbar{gap:5px}}
+</style>
+
+</head>
+<body>
+<div id="app"></div>
+<div id="viewDock">
+  <div class="vd-title">3D VIEW • THEMES</div>
+  <div class="vd-grid">
+    <button data-view="normal">NORMAL</button><button data-view="xray">X-RAY</button>
+    <button data-view="inside">INSIDE</button><button data-view="explode">EXPLODED</button>
+    <button data-view="wire">WIREFRAME</button><button data-view="studio">STUDIO</button>
+  </div>
+  <select id="themeSelect">
+    <option value="exhibition">Exhibition</option><option value="industrial">Industrial Steel</option>
+    <option value="night">Night Engineering</option><option value="laboratory">Laboratory</option>
+    <option value="holographic">Holographic</option><option value="blueprint">Blueprint CAD</option>
+  </select>
+  <div id="viewReadout">NORMAL • Full model</div>
+</div>
+<div id="loadError" style="display:none;position:fixed;inset:0;z-index:9999;place-items:center;background:#050b10;color:#eaf7ff;font-family:Segoe UI,Arial,sans-serif">
+  <div style="max-width:720px;margin:24px;padding:24px;border:1px solid #49d7ff55;border-radius:16px;background:#0c1b27;box-shadow:0 20px 70px #000">
+    <h2 style="margin-top:0">3D engine could not start</h2>
+    <p id="loadErrorText" style="color:#b9ccd5;line-height:1.5">
+      The browser could not load the Three.js 3D engine. Please open this HTML while connected to the internet so the 3D libraries can load.
+    </p>
+  </div>
+</div>
+<div id="hud">
+  <div id="topbar" class="panel">
+    <div><div class="title">SMART WASTE-TO-RESOURCE SYSTEM</div><div class="subtitle">Interactive 3D scientific exhibition simulation · Identify first, then route each stream</div></div>
+    <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">SYSTEM READY</span></div>
+  </div>
+
+  <div id="controls" class="panel">
+    <h3>Waste Selection</h3>
+    <select id="wasteSelect">
+      <option>Banana Peel</option><option>Food Waste</option><option>Vegetable Waste</option>
+      <option>Plastic Bottle</option><option>Plastic Wrapper</option><option>Metal Can</option>
+      <option>Paper</option><option>Glass</option><option>Unknown Object</option>
+    </select>
+    <div class="grid2">
+      <button id="insertBtn">INSERT WASTE</button>
+      <button id="autoBtn">START AUTOMATIC</button>
+      <button id="stopBtn" class="small">STOP</button>
+      <button id="resetBtn" class="small">RESET</button>
+      <button id="labelsBtn" class="small">HIDE LABELS</button>
+      <button id="transBtn" class="small">TRANSPARENT MODE</button>
+    </div>
+    <button id="componentsBtn">SHOW COMPONENTS</button>
+    <button id="realBtn">HOW DOES IT WORK IN REAL LIFE?</button>
+    <button id="researchBtn">RESEARCH DATA</button>
+    <div id="telemetry">
+      <div class="row"><span>Process</span><span class="value" id="processValue">READY</span></div>
+      <div class="row"><span>Weight</span><span class="value" id="weightValue">0 g</span></div>
+      <div class="row"><span>Moisture</span><span class="value" id="moistValue">—</span></div>
+      <div class="row"><span>Metal</span><span class="value" id="metalValue">—</span></div>
+      <div class="row"><span>Servo</span><span class="value" id="servoValue">90°</span></div>
+    </div>
+  </div>
+
+  <div id="ai" class="panel">
+    <h3>AI WASTE CLASSIFIER</h3>
+    <div class="mode" id="aiMode">Waiting for an item…</div>
+    <div class="barRow"><div class="barHead"><span>Wet Waste</span><b id="wetPct">—</b></div><div class="bar"><div class="fill" id="wetFill"></div></div></div>
+    <div class="barRow"><div class="barHead"><span>Plastic</span><b id="plasticPct">—</b></div><div class="bar"><div class="fill" id="plasticFill"></div></div></div>
+    <div class="barRow"><div class="barHead"><span>Other</span><b id="otherPct">—</b></div><div class="bar"><div class="fill" id="otherFill"></div></div></div>
+    <div class="barRow"><div class="barHead"><span>Unknown / Reject</span><b id="unknownPct">—</b></div><div class="bar"><div class="fill" id="unknownFill"></div></div></div>
+    <div class="row" style="margin-top:9px"><span>Classification</span><span class="value" id="classValue">—</span></div>
+    <div class="row"><span>AI Confidence</span><span class="value" id="confValue">—</span></div>
+  </div>
+
+  <div id="dashboard" class="panel">
+    <h3>Research Dashboard</h3>
+    <div class="stats">
+      <div class="stat"><span>Total Tested</span><b id="sTotal">0</b></div>
+      <div class="stat"><span>Wet Waste</span><b id="sWet">0</b></div>
+      <div class="stat"><span>Plastic</span><b id="sPlastic">0</b></div>
+      <div class="stat"><span>Other</span><b id="sOther">0</b></div>
+      <div class="stat"><span>Unknown</span><b id="sUnknown">0</b></div>
+      <div class="stat"><span>Mass Processed</span><b id="sMass">0 g</b></div>
+    </div>
+    <div class="accuracy">Segregation Accuracy: <b id="sAccuracy">0%</b></div>
+  </div>
+
+  <div id="info" class="panel">
+    <button class="close" id="infoClose">×</button>
+    <div id="infoTitle">Component</div>
+    <div class="infoLabel">What is it?</div><div class="infoText" id="infoWhat"></div>
+    <div class="infoLabel">Material / Physical Form</div><div class="infoText" id="infoMaterial"></div>
+    <div class="infoLabel">Function</div><div class="infoText" id="infoFunction"></div>
+    <div class="infoLabel">How it works</div><div class="infoText" id="infoHow"></div>
+    <div class="infoLabel">Role in our project</div><div class="infoText" id="infoRole"></div>
+    <div class="infoLabel">If it fails</div><div class="infoText" id="infoFail"></div>
+    <div class="infoLabel">Demonstration</div><div class="infoText" id="infoDemo"></div>
+  </div>
+
+  <div id="flow" class="panel">
+    <div class="flowLine">
+      <div class="flowNode" id="f1">WASTE INPUT</div><div class="arrow">›</div>
+      <div class="flowNode" id="f2">CAMERA +<br>SENSORS</div><div class="arrow">›</div>
+      <div class="flowNode" id="f3">AI<br>CLASSIFICATION</div><div class="arrow">›</div>
+      <div class="flowNode" id="f4">ESP32 /<br>CONTROLLER</div><div class="arrow">›</div>
+      <div class="flowNode" id="f5">SERVO<br>FLAP</div><div class="arrow">›</div>
+      <div class="flowNode" id="f6">WASTE<br>STREAM</div><div class="arrow">›</div>
+      <div class="flowNode" id="f7">RESOURCE<br>RECOVERY</div>
+    </div>
+  </div>
+
+  <div id="recoveryPanel" style="position:fixed;left:18px;bottom:18px;width:360px;z-index:20;
+background:rgba(7,13,20,.92);border:1px solid rgba(120,210,255,.32);border-radius:16px;
+padding:14px 16px;box-shadow:0 18px 50px rgba(0,0,0,.35);backdrop-filter:blur(12px);
+font-family:Inter,system-ui,sans-serif;color:#eaf7ff">
+    <div style="font-size:11px;letter-spacing:1.5px;color:#78d9ff;font-weight:800">RESOURCE RECOVERY ENGINE</div>
+    <div id="recoveryTitle" style="font-size:18px;font-weight:800;margin-top:5px">Waiting for AI classification</div>
+    <div id="recoveryPath" style="font-size:12px;color:#9eb7c7;margin-top:4px">AI → SORTING → RESOURCE RECOVERY</div>
+    <div id="recoverySteps" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:10px"></div>
+    <div id="recoveryOutput" style="margin-top:10px;padding:9px 10px;border-radius:10px;background:rgba(255,255,255,.045);
+    font-size:12px;line-height:1.45">Insert an item to see what resource pathway is selected.</div>
+  </div>
+
+  <div id="labelsHint">Drag to rotate · Wheel/pinch to zoom · Click labeled components</div>
+  <div id="warning">CONTROLLED PYROLYSIS CONCEPT — ACTUAL HIGH-TEMPERATURE OPERATION REQUIRES ENGINEERED EQUIPMENT AND SUPERVISION.</div>
+  <div id="toast"></div>
+
+  <div id="modal">
+    <div class="modalBox panel">
+      <button class="close" id="modalClose">×</button>
+      <h2 id="modalTitle">How does it work in real life?</h2>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"}}
+</script>
+<script>
+window.addEventListener('error',function(e){
+  const box=document.getElementById('loadError');
+  const text=document.getElementById('loadErrorText');
+  if(box && text && e && e.message){
+    text.textContent='3D startup error: '+e.message+' — check that the HTML is opened in a modern browser with internet access.';
+    box.style.display='grid';
+  }
+});
+window.addEventListener('unhandledrejection',function(e){
+  const box=document.getElementById('loadError');
+  const text=document.getElementById('loadErrorText');
+  if(box && text){
+    text.textContent='3D startup error: '+(e.reason?.message || e.reason || 'Unknown module error')+' — check the browser connection and reload.';
+    box.style.display='grid';
+  }
+});
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+const app=document.getElementById('app');
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x061017);
+scene.fog=new THREE.Fog(0x061017,28,70);
+
+const camera=new THREE.PerspectiveCamera(47,innerWidth/innerHeight,.1,150);
+camera.position.set(15,13,21);
+
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
+const studioFill=new THREE.PointLight(0x9edcff,1.2,22); studioFill.position.set(0,10,6); studioFill.castShadow=false; scene.add(studioFill);
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+app.appendChild(renderer.domElement);
+
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true; controls.dampingFactor=.06;
+controls.minDistance=9; controls.maxDistance=42;
+controls.target.set(0,2,0);
+
+scene.add(new THREE.HemisphereLight(0x9edcff,0x132028,1.5));
+const key=new THREE.DirectionalLight(0xffffff,2.2); key.position.set(7,18,10); key.castShadow=true; key.shadow.mapSize.set(2048,2048); scene.add(key);
+const rim=new THREE.PointLight(0x48d7ff,2.2,28); rim.position.set(-10,8,-3); scene.add(rim);
+
+const mat=(color,metal=.0,rough=.45,opacity=1)=>new THREE.MeshStandardMaterial({color,metalness:metal,roughness:rough,transparent:opacity<1,opacity,side:THREE.DoubleSide});
+const mats={
+ base:mat(0x10232e,.45,.32), dark:mat(0x0a141a,.65,.3), steel:mat(0x70818a,.85,.24),
+ white:mat(0xc8d7db,.15,.32), glass:mat(0x5ed8ff,.15,.12,.18),
+ green:mat(0x39b86b,.15,.3), blue:mat(0x2f72c7,.3,.25), amber:mat(0xf0a82f,.25,.3),
+ red:mat(0xc94755,.15,.3), pcb:mat(0x123d34,.25,.45), black:mat(0x03070a,.1,.5),
+ organic:mat(0x6c9b36,.05,.75), plastic:mat(0x5aa5df,.05,.4), paper:mat(0xe8dfc4,.0,.8)
+};
+
+function box(name,size,pos,material,parent=scene,opts={}){
+ const [x,y,z]=size;
+ const bevel=Math.min(.12,Math.min(x,y,z)/5);
+ const g=new RoundedBoxGeometry(x,y,z,3,Math.max(.025,bevel));
+ const m=new THREE.Mesh(g,material); m.name=name; m.position.set(...pos);
+ m.castShadow=true; m.receiveShadow=true; parent.add(m);
+ if(opts.userData) Object.assign(m.userData,opts.userData);
+ return m;
+}
+function screw(pos,parent=scene){
+ const s=cyl('fastener',.055,.035,pos,mats.steel,parent,16,[Math.PI/2,0,0]);
+ return s;
+}
+function led(pos,color,parent=scene){
+ const m=mat(color,.1,.2); m.emissive=new THREE.Color(color);m.emissiveIntensity=.8;
+ return sphere('status LED',.07,pos,m,parent);
+}
+function pipe(points,r=.09,material=gasPipeMat,parent=scene){
+ const curve=new THREE.CatmullRomCurve3(points);
+ const geo=new THREE.TubeGeometry(curve,24,r,12,false);
+ const mesh=new THREE.Mesh(geo,material);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;
+}
+function cyl(name,r,h,pos,material,parent=scene,segments=32,rot=null){
+ const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,segments),material);m.name=name;m.position.set(...pos);
+ if(rot)m.rotation.set(...rot);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;
+}
+function sphere(name,r,pos,material,parent=scene){
+ const m=new THREE.Mesh(new THREE.SphereGeometry(r,24,16),material);m.name=name;m.position.set(...pos);m.castShadow=true;parent.add(m);return m;
+}
+function line(points,material,parent=scene){
+ const geo=new THREE.BufferGeometry().setFromPoints(points);const l=new THREE.Line(geo,material);parent.add(l);return l;
+}
+function label(text,pos,color='#bfefff',scale=.34){
+ const c=document.createElement('canvas'),ctx=c.getContext('2d'); c.width=512;c.height=128;
+ ctx.clearRect(0,0,c.width,c.height);ctx.font='bold 38px Segoe UI,Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+ ctx.fillStyle='rgba(3,12,18,.78)';ctx.roundRect(6,16,500,96,18);ctx.fill();
+ ctx.strokeStyle=color;ctx.lineWidth=3;ctx.stroke();
+ ctx.fillStyle=color;ctx.fillText(text,256,64);
+ const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
+ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+ sp.position.set(...pos);sp.scale.set(4.0*scale,1*scale,1);sp.userData.isLabel=true;scene.add(sp);return sp;
+}
+
+const base=box('Exhibition Base',[26,.8,15],[0,-.4,0],mats.base);
+const gridMat=new THREE.LineBasicMaterial({color:0x1b4b5b,transparent:true,opacity:.35});
+for(let x=-13;x<=13;x+=1) line([new THREE.Vector3(x,.02,-7.5),new THREE.Vector3(x,.02,7.5)],gridMat);
+for(let z=-7;z<=7;z+=1) line([new THREE.Vector3(-13,.02,z),new THREE.Vector3(13,.02,z)],gridMat);
+label('SMART AI WASTE BIN',[-7.5,.3,-6.5],'#72e5ff',.42);
+label('WET WASTE RESOURCE RECOVERY',[0,.3,-6.5],'#7ff0ad',.36);
+label('PLASTIC RESOURCE RECOVERY',[7.5,.3,-6.5],'#7fb5ff',.38);
+
+const clickable=[];
+function addClickable(obj,key){
+ obj.userData.component=key; clickable.push(obj); return obj;
+}
+
+/* SMART BIN */
+const bin=new THREE.Group();bin.position.set(-7,0,0);scene.add(bin);
+const cornerMat=mat(0x263b45,.75,.24);
+for(const x of [-3.85,3.85]) for(const z of [-2.85,2.85]) {
+  cyl('structural post',.11,6.7,[x,3.45,z],cornerMat,bin,16);
+}
+for(const y of [1.0,6.9]) for(const z of [-2.92,2.92]) {
+  box('reinforcement rail',[7.9,.12,.12],[0,y,z],cornerMat,bin);
+}
+for(const x of [-3.75,3.75]) for(const y of [1.0,6.9]) {
+  box('reinforcement rail',[.12,.12,5.8],[x,y,0],cornerMat,bin);
+}
+for(const x of [-3.35,-1.1,1.1,3.35]) for(const y of [1.15,6.65]) {
+  screw([x,y,2.96],bin);
+}
+const binBody=box('binBody',[8,7,6],[0,3.5,0],mats.dark,bin);
+binBody.material=binBody.material.clone();
+binBody.material.transparent=true;
+binBody.material.opacity=.16;
+binBody.userData.originalOpacity=.16;
+const front=box('transparentFront',[7.5,6.5,.08],[0,3.5,3.02],mats.glass,bin);
+front.userData.isGlass=true;
+box('top',[8.2,.35,6.2],[0,7.1,0],mats.steel,bin);
+box('inputPlatform',[3.2,.3,2.8],[0,6.8,-.2],mats.steel,bin);
+box('inputOpening',[3.3,.25,2.0],[0,7.0,-.15],mats.black,bin);
+label('WASTE INPUT',[ -7,7.8,-1.8],'#ffd166',.28);
+
+const chamber=box('Input Chamber',[3.6,2.4,3.5],[0,5.5,-.1],mats.glass,bin);
+chamber.material=chamber.material.clone();chamber.material.opacity=.10;
+label('INPUT CHAMBER',[-7,5.5,-3.0],'#bcecff',.26);
+
+const camBody=addClickable(box('Camera Module',[.7,.55,.55],[-2.0,5.9,-2.55],mats.black,bin), 'camera');
+cyl('cameraLens',.2,.16,[-2.0,5.9,-2.86],mats.blue,bin,32,[Math.PI/2,0,0]);
+const camLED=sphere('cameraLED',.09,[-2.38,5.95,-2.84],mats.green,bin);
+camLED.material=camLED.material.clone(); camLED.material.emissive=new THREE.Color(0x00ff88);camLED.material.emissiveIntensity=.1;
+label('CAMERA',[-8.8,6.5,-2.9],'#7fb5ff',.23);
+
+const moist=addClickable(box('Moisture Sensor',[.65,.2,.8],[.7,5.6,-2.5],mats.amber,bin), 'moisture');
+cyl('moistProbe1',.06,.55,[.55,5.25,-2.5],mats.steel,bin,12);
+cyl('moistProbe2',.06,.55,[.85,5.25,-2.5],mats.steel,bin,12);
+label('MOISTURE SENSOR',[-4.9,5.4,-3.0],'#ffd166',.22);
+
+const metal=addClickable(box('Inductive Metal Sensor',[.9,.2,.65],[-.7,5.6,-2.5],mats.blue,bin),'metal');
+label('INDUCTIVE METAL',[-6.0,4.7,-3.0],'#72a7ff',.21);
+
+const load=addClickable(box('Load Cell',[2.5,.18,1.6],[0,4.35,-.2],mats.steel,bin),'load');
+box('loadPlatform',[2.8,.18,1.9],[0,4.48,-.2],mats.white,bin);
+label('LOAD CELL + HX711',[-7,3.7,-3.0],'#cde9f5',.23);
+
+const electronics=box('electronics',[3.1,2.0,4.8],[2.15,3.1,-.2],mats.glass,bin);
+electronics.material=electronics.material.clone();electronics.material.opacity=.08;
+label('ELECTRONICS',[-4.85,2.9,-2.95],'#bcecff',.25);
+
+const pcb=addClickable(box('ESP32 Controller',[2.0,.15,1.15],[2.15,3.65,-2.55],mats.pcb,bin),'controller');
+for(let i=0;i<9;i++) sphere('pcbLED',.035,[1.35+i*.2,3.78,-2.57],mats.green,bin);
+label('ESP32 / ARDUINO',[-4.85,4.0,-3.0],'#65e69a',.23);
+
+const lcd=addClickable(box('LCD OLED',[2.0,1.0,.12],[2.15,4.9,-2.72],mats.black,bin),'lcd');
+box('lcdScreen',[1.75,.65,.03],[2.15,4.9,-2.81],mat(0x103f43,.0,.35),bin);
+label('LCD / OLED',[-4.85,5.4,-3.0],'#65e69a',.22);
+
+const servo=addClickable(box('Servo Motor',[1.1,.75,1.0],[0,2.0,0],mats.blue,bin),'servo');
+for(let i=0;i<3;i++) cyl('servo screw',.045,.08,[(-.35+i*.35),1.62,-.55],mats.steel,bin,12,[Math.PI/2,0,0]);
+led([2.75,3.65,-2.64],0x33ff99,bin);
+led([2.75,4.9,-2.64],0x49d7ff,bin);
+led([-2.38,5.95,-2.84],0x55eaff,bin);
+const hornDetail2=cyl('Servo Horn',.75,.10,[0,2.45,0],mats.white,bin,24,[Math.PI/2,0,0]);
+hornDetail2.rotation.z=Math.PI/4;
+const flap=new THREE.Group();flap.position.set(0,2.35,0);bin.add(flap);
+box('Sorting Flap',[3.8,.18,2.4],[0,0,0],mats.amber,flap);
+flap.rotation.x=.0;
+label('SERVO MOTOR — AUTOMATIC ROUTING',[-7,1.1,-3.1],'#ffd166',.24);
+
+const chutes=[];
+const chuteData=[['WET',-2.65,0x45c878],['PLASTIC',-.9,0x4f8de8],['OTHER',.9,0xe4a83b],['UNKNOWN / REJECT',2.65,0xd95767]];
+chuteData.forEach(([n,x,c],i)=>{
+ const cm=mat(c,.15,.35);
+ const cobj=box('chute-'+n,[1.45,1.2,2.3],[x,1.15,-.4],cm,bin);
+ cobj.userData.stream=n;
+ chutes.push(cobj);
+ box('divider',[.1,1.4,2.5],[x+(.9),1.5,-.4],mats.steel,bin);
+ label(n,[-7+x,0.4,-3.2], '#ffffff',.19);
+});
+for(let i=0;i<4;i++) box('compartment',[1.45,1.0,2.6],[chuteData[i][1],.35,1.15],mats.black,bin);
+
+const power=addClickable(box('Power Supply',[1.4,.7,1.1],[2.15,1.55,-2.55],mats.dark,bin),'power');
+label('POWER',[-4.85,1.5,-3.0],'#bcecff',.2);
+
+/* cables */
+const cableMat=new THREE.LineBasicMaterial({color:0x44d6ff,transparent:true,opacity:.55});
+line([new THREE.Vector3(-8.9,5.9,-2.8),new THREE.Vector3(-7.2,4.0,-2.7),new THREE.Vector3(-4.9,3.6,-2.7)],cableMat);
+line([new THREE.Vector3(-6.3,5.5,-2.8),new THREE.Vector3(-5.2,4.3,-2.7)],cableMat);
+line([new THREE.Vector3(-7.8,5.5,-2.8),new THREE.Vector3(-5.0,4.6,-2.7)],cableMat);
+line([new THREE.Vector3(-5.0,3.6,-2.7),new THREE.Vector3(-4.8,4.8,-2.7)],cableMat);
+
+/* RESOURCE RECOVERY CENTER */
+const center=new THREE.Group();center.position.set(0,0,.3);scene.add(center);
+const organic=addClickable(cyl('Organic Waste Container',1.35,2.5,[-3.7,1.65,0],mats.organic,center),'organic');
+label('ORGANIC WASTE',[-3.7,3.2,-2.1],'#7ff0ad',.25);
+const compostDetail2=addClickable(cyl('Composting Chamber',1.4,2.8,[-.9,1.8,0],mats.green,center),'compostDetail2');
+label('COMPOSTING',[-.9,3.45,-2.1],'#7ff0ad',.25);
+cyl('compostOutput',.65,.5,[-.9,.4,0],mats.organic,center);
+label('COMPOST',[-.9,.75,-2.0],'#7ff0ad',.2);
+const digester=addClickable(cyl('Anaerobic Digestion Tank',1.35,2.8,[2.0,1.8,0],mats.blue,center),'digester');
+label('ANAEROBIC DIGESTION', [2.0,3.45,-2.1],'#72a7ff',.23);
+const gasPipeMat=new THREE.MeshStandardMaterial({color:0x83a7b4,metalness:.75,roughness:.22});
+cyl('gasPipe',.14,2.3,[3.2,3.8,0],gasPipeMat,center,20,[0,0,Math.PI/2]);
+cyl('gasStore',.85,1.7,[4.25,4.0,0],mats.amber,center);
+label('BIOGAS STORAGE', [4.25,5.0,-1.6],'#ffd166',.22);
+label('SAFE PROCESS MODEL — NO OPEN FLAME', [1.5,.3,-2.0],'#ffdca1',.18);
+
+/* flow pipes center */
+const beltMat=mat(0x1b252a,.25,.6);
+box('organic conveyor',[5.0,.22,1.05],[-1.1,.72,.55],beltMat,center);
+for(let i=0;i<9;i++) cyl('conveyor roller',.13,1.18,[-3.25+i*.55,.58,.55],mats.steel,center,20,[Math.PI/2,0,0]);
+const processPipeMat=mat(0x6e8791,.8,.22);
+pipe([new THREE.Vector3(-2.7,2.0,.1),new THREE.Vector3(-1.8,2.0,.1),new THREE.Vector3(-1.1,2.3,.1)],.08,processPipeMat,center);
+pipe([new THREE.Vector3(.2,3.0,.1),new THREE.Vector3(1.0,3.0,.1),new THREE.Vector3(2.0,3.8,.1)],.08,processPipeMat,center);
+const pipeMat=new THREE.LineBasicMaterial({color:0x65e69a,linewidth:3});
+line([new THREE.Vector3(-2.7,2.0,0),new THREE.Vector3(-2.0,2.0,0),new THREE.Vector3(-1.0,2.0,0)],pipeMat);
+line([new THREE.Vector3(-2.7,1.7,.3),new THREE.Vector3(-1.0,1.7,.3),new THREE.Vector3(1.0,1.7,.3)],pipeMat);
+
+/* PLASTIC RECOVERY */
+const right=new THREE.Group();right.position.set(7,0,.3);scene.add(right);
+box('plastic conveyor', [9.8,.18,.95],[1.6,.62,.7],beltMat,right);
+for(let i=0;i<16;i++) cyl('plastic roller',.11,1.05,[-3.0+i*.62,.52,.7],mats.steel,right,18,[Math.PI/2,0,0]);
+for(let i=0;i<8;i++) {
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(1.27,.10,12,40),mats.dark);
+  ring.rotation.x=Math.PI/2; ring.position.set(4.5,.2+i*.4,.0); right.add(ring);
+}
+const plasticBin=addClickable(box('Plastic Collection',[2.0,2.0,2.4],[-3.0,1.4,0],mats.plastic,right),'plasticCollection');
+label('PLASTIC COLLECTION',[4,3.0,-2.1],'#72a7ff',.24);
+const sorting=addClickable(box('Sorting Section',[2.0,1.8,2.4],[-.5,1.3,0],mats.steel,right),'plasticSorting');
+label('SORTING',[6.5,2.8,-2.1],'#cde9f5',.23);
+const shred=addClickable(cyl('Size Reduction Concept',.9,2.0,[2.0,1.4,0],mats.dark,right),'shred');
+label('SIZE REDUCTION',[9,2.7,-2.1],'#cde9f5',.21);
+const reactor=addClickable(cyl('Closed Pyrolysis Reactor',1.25,2.8,[4.5,1.8,0],mats.red,right),'pyrolysis');
+label('CONTROLLED PYROLYSIS',[11.5,3.5,-2.0],'#ff8e99',.23);
+box('heaterBand',[2.7,.22,2.75],[4.5,.65,0],mats.amber,right);
+label('HEATING CONTROL',[11.5,.8,-2.0],'#ffd166',.18);
+const vapourMat=new THREE.LineBasicMaterial({color:0xffd166});
+line([new THREE.Vector3(4.5,3.2,0),new THREE.Vector3(4.5,4.1,0),new THREE.Vector3(6.3,4.1,0)],vapourMat);
+const condenser=addClickable(cyl('Condenser',.75,2.0,[7.1,3.2,0],mats.blue,right),'condenser');
+label('CONDENSER',[14.1,4.3,-1.7],'#72a7ff',.22);
+box('collector',[2.1,1.0,2.0],[9.3,1.0,0],mats.white,right);
+label('LIQUID / WAX',[16.3,2.0,-1.6],'#e9f6ff',.20);
+cyl('gasOut',.5,.8,[9.0,2.7,1.0],mats.amber,right);
+label('GAS',[16,3.5,-.8],'#ffd166',.19);
+cyl('charOut',.5,.8,[9.0,.65,-1.0],mats.black,right);
+label('CHAR',[16,.8,-1.7],'#cdd7db',.19);
+label('CLOSED CONCEPT — NO WORKING HIGH-TEMP REACTOR',[10,5.7,-1.7],'#ffbdc4',.18);
+
+/* animated process effects */
+const particleMat=new THREE.MeshBasicMaterial({color:0x59dfff});
+const particles=[];
+for(let i=0;i<70;i++){
+ const p=new THREE.Mesh(new THREE.SphereGeometry(.035,8,8),particleMat);
+ p.position.set(-5+Math.random()*18, .7+Math.random()*5, -1.5+Math.random()*3);
+ p.userData.speed=.15+Math.random()*.4; p.userData.phase=Math.random()*Math.PI*2;
+ scene.add(p);particles.push(p);
+}
+const vaporMat=new THREE.MeshBasicMaterial({color:0xffd166,transparent:true,opacity:.22});
+for(let i=0;i<12;i++){
+ const v=new THREE.Mesh(new THREE.SphereGeometry(.07+Math.random()*.07,10,10),vaporMat);
+ v.position.set(11.5+Math.random(),4+Math.random(),0);
+ v.userData.phase=Math.random()*6;scene.add(v);particles.push(v);
+}
+const pulseRing=new THREE.Mesh(new THREE.TorusGeometry(1.5,.025,8,64),new THREE.MeshBasicMaterial({color:0x49d7ff,transparent:true,opacity:.5}));
+pulseRing.rotation.x=Math.PI/2;pulseRing.position.set(-7,5.9,-2.9);scene.add(pulseRing);
+
+/* waste objects */
+let wasteObj=null;
+const wasteData={
+ "Banana Peel":{cat:'wet',weight:86,moist:'HIGH',metal:'NO METAL',conf:96,color:0xd9bd38,type:'organic'},
+ "Food Waste":{cat:'wet',weight:125,moist:'HIGH',metal:'NO METAL',conf:94,color:0x8aa43c,type:'organic'},
+ "Vegetable Waste":{cat:'wet',weight:110,moist:'HIGH',metal:'NO METAL',conf:95,color:0x57a94d,type:'organic'},
+ "Plastic Bottle":{cat:'plastic',weight:24,moist:'LOW',metal:'NO METAL',conf:98,color:0x5db8ed,type:'plastic'},
+ "Plastic Wrapper":{cat:'plastic',weight:9,moist:'LOW',metal:'NO METAL',conf:97,color:0xd7e8f0,type:'plastic'},
+ "Metal Can":{cat:'other',weight:31,moist:'LOW',metal:'METAL DETECTED',conf:98,color:0x9aa9b2,type:'metal'},
+ "Paper":{cat:'other',weight:12,moist:'LOW',metal:'NO METAL',conf:95,color:0xe8dfc4,type:'paper'},
+ "Glass":{cat:'other',weight:46,moist:'LOW',metal:'NO METAL',conf:93,color:0x8bd3c7,type:'glass'},
+ "Unknown Object":{cat:'unknown',weight:67,moist:'LOW',metal:'NO METAL',conf:57,color:0x8a6e9f,type:'unknown'}
+};
+const categoryName={wet:'WET WASTE',plastic:'PLASTIC',other:'OTHER',unknown:'UNKNOWN / REJECT'};
+const servoAngles={wet:135,plastic:105,other:70,unknown:45};
+const stats={total:0,wet:0,plastic:0,other:0,unknown:0,correct:0,mass:0};
+
+function makeWaste(name){
+ if(wasteObj) scene.remove(wasteObj);
+ const d=wasteData[name],g=new THREE.Group();g.name='Waste Object';
+ const mm=mat(d.color,.15,.45);
+ if(d.type==='organic'){
+   sphere('waste',.55,[0,0,0],mm,g); sphere('waste2',.35,[.4,.1,.15],mm,g);
+   for(let i=0;i<5;i++) sphere('organic detail',.10,[Math.cos(i)*.42,.2+Math.sin(i)*.18,Math.sin(i)*.42],mats.green,g);
+ } else if(d.type==='plastic'){
+   cyl('bottle',.35,1.2,[0,0,0],mm,g,24);cyl('cap',.17,.15,[0,.67,0],mats.blue,g,24);
+   for(let y=-.25;y<=.25;y+=.25){
+ const torus = new THREE.Mesh(new THREE.TorusGeometry(.31,.025,8,32),mats.white);
+ torus.position.set(0,y,0);
+ g.add(torus);
+}
+ } else if(d.type==='metal'){
+   cyl('can',.42,.85,[0,0,0],mm,g,28);
+ } else if(d.type==='paper'){
+   box('paper',[1,.08,.75],[0,0,0],mm,g);g.rotation.y=.25;
+ } else if(d.type==='glass'){
+   cyl('glass',.4,.8,[0,0,0],mm,g,20);g.rotation.x=Math.PI/2;
+ } else {
+   box('unknown',[.8,.65,.7],[0,0,0],mm,g);g.rotation.set(.3,.4,.2);
+ }
+ g.position.set(-7,9,-.2);scene.add(g);wasteObj=g;return g;
+}
+
+function setText(id,v){document.getElementById(id).textContent=v}
+function setFlow(n){
+ for(let i=1;i<=7;i++)document.getElementById('f'+i).classList.toggle('active',i===n);
+}
+function toast(t){const e=document.getElementById('toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),2200)}
+function updateAI(vals){
+ ['wet','plastic','other','unknown'].forEach(k=>{document.getElementById(k+'Pct').textContent=vals[k]+'%';document.getElementById(k+'Fill').style.width=vals[k]+'%'});
+}
+function resetAI(){updateAI({wet:0,plastic:0,other:0,unknown:0});['wet','plastic','other','unknown'].forEach(k=>document.getElementById(k+'Pct').textContent='—');setText('classValue','—');setText('confValue','—')}
+function updateStats(){
+ setText('sTotal',stats.total);setText('sWet',stats.wet);setText('sPlastic',stats.plastic);setText('sOther',stats.other);setText('sUnknown',stats.unknown);setText('sMass',stats.mass+' g');
+ setText('sAccuracy',stats.total?Math.round(stats.correct/stats.total*100)+'%':'0%');
+}
+
+let running=false, stopRequested=false, sequenceTimer=null;
+function setStatus(t,active=true){setText('statusText',t);document.getElementById('statusDot').style.background=active?'#65e69a':'#ff6b7a';document.getElementById('statusDot').style.boxShadow=active?'0 0 13px #65e69a':'0 0 13px #ff6b7a'}
+
+function wait(ms){return new Promise(r=>{sequenceTimer=setTimeout(r,ms)})}
+function animateWasteTo(target,duration=800){
+ return new Promise(resolve=>{
+  if(!wasteObj){resolve();return}
+  const start=wasteObj.position.clone(),end=new THREE.Vector3(...target);const t0=performance.now();
+  function step(t){if(stopRequested){resolve();return}const p=Math.min(1,(t-t0)/duration),e=p*p*(3-2*p);
+   wasteObj.position.lerpVectors(start,end,e);wasteObj.rotation.y+=.08;
+   if(p<1)requestAnimationFrame(step);else resolve();
+  }requestAnimationFrame(step);
+ });
+}
+
+/* RESOURCE RECOVERY ENGINE */
+const recoveryState={group:null,pulses:[]};
+
+function recoveryUI(title,path,steps,output){
+  const t=document.getElementById('recoveryTitle');
+  const p=document.getElementById('recoveryPath');
+  const st=document.getElementById('recoverySteps');
+  const o=document.getElementById('recoveryOutput');
+  if(!t||!p||!st||!o)return;
+  t.textContent=title;
+  p.textContent=path;
+  st.innerHTML=steps.map((x,i)=>'<span class="rStep '+(x.fuel?'fuel ':'')+(i===0?'active':'')+'">'+x.label+'</span>').join('');
+  o.innerHTML=output;
+}
+
+function recoveryPathFor(cat){
+  if(cat==='wet')return{
+    title:'WET WASTE → BIOGAS / COMPOST',
+    path:'AI → WET BIN → ANAEROBIC DIGESTION + COMPOSTING',
+    steps:[{label:'WET WASTE'},{label:'DIGESTER'},{label:'BIOGAS',fuel:true},{label:'COMPOST'}],
+    output:'Organic material follows biological treatment. The model shows <b>biogas</b> from anaerobic digestion and <b>compost</b> from aerobic treatment.'
+  };
+  if(cat==='plastic')return{
+    title:'PLASTIC → CONCEPTUAL FUEL/OIL PATHWAY',
+    path:'AI → PLASTIC → SIZE REDUCTION → PYROLYSIS CONCEPT → CONDENSER',
+    steps:[{label:'PLASTIC'},{label:'SHREDDER'},{label:'PYROLYSIS',fuel:true},{label:'CONDENSER'},{label:'LIQUID/WAX',fuel:true},{label:'GAS + CHAR'}],
+    output:'Suitable plastic follows a <b>conceptual controlled pyrolysis pathway</b>. The model represents liquid/wax, gas and char products; it does not operate a real fuel-production reactor.'
+  };
+  if(cat==='other')return{
+    title:'OTHER → RECYCLING / SAFE HANDLING',
+    path:'AI → OTHER BIN → MATERIAL-SPECIFIC RECOVERY',
+    steps:[{label:'OTHER'},{label:'SEPARATE'},{label:'RECYCLE / HANDLE'}],
+    output:'Paper, glass and metals are shown going to appropriate recycling or handling streams.'
+  };
+  return{
+    title:'UNKNOWN → REJECT / MANUAL REVIEW',
+    path:'AI → LOW CONFIDENCE → UNKNOWN / REJECT',
+    steps:[{label:'LOW CONFIDENCE'},{label:'REJECT'},{label:'MANUAL REVIEW'}],
+    output:'Low-confidence material is isolated instead of being forced into an uncertain category.'
+  };
+}
+
+function makeRecoveryPulse(points,color,count){
+  if(recoveryState.group){
+    scene.remove(recoveryState.group);
+    recoveryState.group=null;
+  }
+  const group=new THREE.Group();
+  const curve=new THREE.CatmullRomCurve3(points.map(v=>new THREE.Vector3(v[0],v[1],v[2])));
+  recoveryState.group=group;
+  recoveryState.pulses=[];
+  scene.add(group);
+  for(let i=0;i<count;i++){
+    const m=new THREE.Mesh(
+      new THREE.SphereGeometry(.075,10,10),
+      new THREE.MeshStandardMaterial({color:color,emissive:color,emissiveIntensity:1.8})
+    );
+    m.userData.curve=curve;
+    m.userData.u=i/count;
+    m.userData.speed=.00035+Math.random()*.00012;
+    group.add(m);
+    recoveryState.pulses.push(m);
+  }
+}
+
+async function animateRecovery(cat){
+  const r=recoveryPathFor(cat);
+  recoveryUI(r.title,r.path,r.steps,r.output);
+
+  if(cat==='wet'){
+    makeRecoveryPulse([
+      [-5.5,.9,2.0],[-3.0,1.5,2.0],[-.5,2.2,2.0],[1.8,3.1,2.0]
+    ],0x65e1ff,12);
+    setText('processValue','RECOVERY: ANAEROBIC DIGESTION → BIOGAS');
+    await wait(1300);
+    recoveryUI(
+      'WET WASTE → BIOGAS + COMPOST',
+      r.path,
+      [{label:'WET WASTE'},{label:'DIGESTER'},{label:'BIOGAS',fuel:true},{label:'COMPOST'}],
+      'Biogas storage is shown as a <b>safe representation</b> of the gas product. Composting is shown as a parallel recovery route.'
+    );
+  }else if(cat==='plastic'){
+    makeRecoveryPulse([
+      [-5.5,.9,3.0],[.5,1.8,3.0],[4.2,2.2,3.0],[7.2,3.1,3.0],[9.5,2.2,3.0]
+    ],0xffa45c,14);
+    setText('processValue','RECOVERY: PYROLYSIS CONCEPT → CONDENSER');
+    await wait(1500);
+    recoveryUI(
+      'PLASTIC → LIQUID/WAX + GAS + CHAR',
+      r.path,
+      [{label:'PLASTIC'},{label:'SHREDDER'},{label:'PYROLYSIS',fuel:true},{label:'CONDENSER'},{label:'LIQUID/WAX',fuel:true},{label:'GAS + CHAR'}],
+      'The liquid/wax stream is a <b>pyrolysis product concept</b>. Actual transport fuels require additional industrial refining and quality control.'
+    );
+  }else if(cat==='other'){
+    makeRecoveryPulse([[-5.5,.9,4.0],[-3.0,1.0,4.0]],0xb9c7d3,7);
+    setText('processValue','RECOVERY: RECYCLING / SAFE HANDLING');
+    await wait(850);
+  }else{
+    makeRecoveryPulse([[-5.5,.9,4.9],[-3.0,1.0,4.9]],0xa98cff,7);
+    setText('processValue','RECOVERY: UNKNOWN / REJECT');
+    await wait(850);
+  }
+
+  if(recoveryState.group){
+    scene.remove(recoveryState.group);
+    recoveryState.group=null;
+    recoveryState.pulses=[];
+  }
+}
+
+function showScientificJourney(cat){
+  const t=document.getElementById('journeyTitle'), b=document.getElementById('journeyBody');
+  if(!t||!b)return;
+  if(cat==='wet'){
+    t.textContent='WET WASTE → COMPOST + BIOGAS';
+    b.innerHTML=
+      '<div class="jstage"><b>1. AI identifies wet/organic waste.</b><br>The controller sends it to the wet-waste compartment.</div>'+
+      '<div class="jstage"><b>2. Preparation.</b><br>Organic material is separated from unsuitable contaminants and prepared for biological treatment.</div>'+
+      '<div class="jstage"><b>3. Composting.</b><br>With oxygen available, microorganisms break down organic matter and produce a more stable compost material.</div>'+
+      '<div class="jstage"><b>4. Anaerobic digestion.</b><br>In a sealed digester without oxygen, microorganisms break down organic matter and generate biogas.</div>'+
+      '<div class="jstage"><b>5. Biogas.</b><br>The model represents biogas storage. Biogas commonly contains mainly methane and carbon dioxide.</div>'+
+      '<div class="jstage"><b>6. Digestate.</b><br>The remaining digested material is represented as a separate recovery output.</div>';
+  } else if(cat==='plastic'){
+    t.textContent='PLASTIC → PYROLYSIS OIL/WAX → FUEL REFINING';
+    b.innerHTML=
+      '<div class="jstage"><b>1. AI identifies plastic.</b><br>The servo routes it to the plastic recovery line.</div>'+
+      '<div class="jstage"><b>2. Sorting + cleaning.</b><br>Suitable plastic is separated and prepared for the conceptual thermochemical pathway.</div>'+
+      '<div class="jstage"><b>3. Size reduction.</b><br>The plastic is represented as being shredded into smaller pieces.</div>'+
+      '<div class="jstage"><b>4. Controlled pyrolysis concept.</b><br>In an engineered industrial process, suitable plastic can be thermally decomposed in an oxygen-limited/inert environment.</div>'+
+      '<div class="jstage"><b>5. Vapour → condenser.</b><br>Condensable vapours are cooled into a liquid/wax hydrocarbon mixture. <b>This is not finished gasoline.</b></div>'+
+      '<div class="jstage"><b>6. Refining concept.</b><br>A separate industrial separation/upgrading stage can turn complex hydrocarbon mixtures into different product fractions.</div>'+
+      '<div class="jstage"><b>7. Gasoline clarification.</b><br>A gasoline-range fraction can be a conceptual refinery output after appropriate separation/upgrading; pyrolysis does <b>not</b> directly make gasoline in one step.</div>'+
+      '<div class="jstage"><b>Safety.</b><br>The pyrolysis and refining stages are educational concepts only. No working high-temperature reactor or fuel-production procedure is represented.</div>';
+  } else if(cat==='other'){
+    t.textContent='OTHER → MATERIAL-SPECIFIC RECOVERY';
+    b.innerHTML='<div class="jstage"><b>AI identifies another material.</b><br>Examples include paper, glass and metal.</div><div class="jstage"><b>Next:</b> material-specific recycling or appropriate handling.</div>';
+  } else {
+    t.textContent='UNKNOWN → REJECT / REVIEW';
+    b.innerHTML='<div class="jstage"><b>AI confidence is low.</b><br>The controller sends the item to UNKNOWN/REJECT instead of forcing an uncertain classification.</div>';
+  }
+}
+
+async function runSimulation(){
+ if(running)return;
+ running=true;stopRequested=false;
+ const name=document.getElementById('wasteSelect').value,d=wasteData[name];
+ makeWaste(name); setFlow(1);setStatus('WASTE DETECTED');setText('processValue','WASTE DETECTED');
+ await animateWasteTo([-7,7,-.2],500); if(stopRequested)return finishStop();
+ setFlow(2);setText('processValue','SENSORS ACTIVE');setText('weightValue',d.weight+' g');setText('moistValue',d.moist);setText('metalValue',d.metal);
+ camLED.material.emissiveIntensity=5;camLED.material.color.set(0x55eaff);
+ await wait(650);camLED.material.emissiveIntensity=.1;
+ setText('processValue','SCANNING…');setText('aiMode','CAMERA: IMAGE CAPTURE');await wait(700);if(stopRequested)return finishStop();
+ setFlow(3);setText('processValue','AI CLASSIFYING…');setText('aiMode','MULTI-SENSOR AI INFERENCE');
+ const c=d.conf;
+ let vals=d.cat==='wet'?{wet:c,plastic:2,other:1,unknown:100-c-3}:d.cat==='plastic'?{wet:1,plastic:c,other:1,unknown:100-c-2}:d.cat==='other'?{wet:1,plastic:2,other:c,unknown:100-c-3}:{wet:18,plastic:15,other:10,unknown:c};
+ updateAI(vals);await wait(1000);if(stopRequested)return finishStop();
+ setText('classValue',categoryName[d.cat]);setText('confValue',c+'%');setText('processValue','CLASSIFICATION READY');
+ setFlow(4);setStatus('CONTROLLER ACTIVE');await wait(550);
+ setFlow(5);const angle=servoAngles[d.cat];setText('servoValue',angle+'°');setText('processValue','SERVO ROUTING');setText('aiMode','CONTROLLER → SERVO');
+ const targetRot=(angle-90)*Math.PI/180;
+ const startRot=flap.rotation.z,t0=performance.now();
+ await new Promise(resolve=>{
+  function s(t){const p=Math.min(1,(t-t0)/650),e=p*p*(3-2*p);flap.rotation.z=startRot+(targetRot-startRot)*e;if(p<1)requestAnimationFrame(s);else resolve()}
+  requestAnimationFrame(s)
+ });if(stopRequested)return finishStop();
+ const chuteIndex={wet:-2.65,plastic:-.9,other:.9,unknown:2.65}[d.cat];
+ await animateWasteTo([-7+chuteIndex,1.7,1.0],850);
+ setFlow(6);setStatus('SORTING COMPLETE');setText('processValue','SORTING COMPLETE');await wait(500);
+ await animateWasteTo([-7+chuteIndex,.55,1.4],450);
+ stats.total++;stats[d.cat]++;stats.mass+=d.weight;stats.correct++;updateStats();
+ setFlow(7);setText('aiMode','RESOURCE RECOVERY PATHWAY');
+ showScientificJourney(d.cat);setText('processValue','RESOURCE RECOVERY STARTING');
+ await animateRecovery(d.cat);
+ await wait(350);
+ // return servo to neutral
+ const sr=flap.rotation.z,t1=performance.now();
+ await new Promise(resolve=>{function s(t){const p=Math.min(1,(t-t1)/500),e=p*p*(3-2*p);flap.rotation.z=sr*(1-e);setText('servoValue',Math.round(90+(angle-90)*(1-e))+'°');if(p<1)requestAnimationFrame(s);else resolve()}requestAnimationFrame(s)});
+ setText('servoValue','90°');setStatus('SYSTEM READY');setFlow(1);
+ running=false;
+}
+function finishStop(){clearTimeout(sequenceTimer);running=false;setStatus('SYSTEM READY');setText('processValue','STOPPED');setFlow(1);if(wasteObj){scene.remove(wasteObj);wasteObj=null}}
+document.getElementById('insertBtn').onclick=runSimulation;
+document.getElementById('autoBtn').onclick=runSimulation;
+document.getElementById('stopBtn').onclick=()=>{stopRequested=true;finishStop()};
+document.getElementById('resetBtn').onclick=()=>{
+ stopRequested=true;finishStop();stats.total=stats.wet=stats.plastic=stats.other=stats.unknown=stats.correct=stats.mass=0;updateStats();
+ resetAI();recoveryUI('Waiting for AI classification','AI → SORTING → RESOURCE RECOVERY',[], 'Insert an item to see what resource pathway is selected.');setText('weightValue','0 g');setText('moistValue','—');setText('metalValue','—');setText('servoValue','90°');setText('processValue','READY');setText('aiMode','Waiting for an item…');flap.rotation.z=0;setFlow(1);setStatus('SYSTEM READY');
+};
+let labelsVisible=true,transparent=false;
+document.getElementById('labelsBtn').onclick=()=>{
+ labelsVisible=!labelsVisible;
+ scene.traverse(o=>{if(o.userData.isLabel)o.visible=labelsVisible});
+ document.getElementById('labelsBtn').textContent=labelsVisible?'HIDE LABELS':'SHOW LABELS';
+};
+document.getElementById('transBtn').onclick=()=>{
+ transparent=!transparent;
+ bin.traverse(o=>{if(o.isMesh&&!o.userData.isLabel&&!o.userData.originalOpacity){o.userData.originalOpacity=o.material.opacity;o.material=Array.isArray(o.material)?o.material[0]:o.material}});
+ bin.traverse(o=>{if(o.isMesh && !o.userData.isLabel){o.material.transparent=transparent||o.material.opacity<1;if(transparent)o.material.opacity=Math.min(o.material.opacity,.45);else if(o.userData.originalOpacity!==undefined)o.material.opacity=o.userData.originalOpacity}});
+ document.getElementById('transBtn').textContent=transparent?'SOLID MODE':'TRANSPARENT MODE';
+};
+document.getElementById('componentsBtn').onclick=()=>toast('Click a labeled component in the 3D model for its scientific information.');
+document.getElementById('infoClose').onclick=()=>document.getElementById('info').classList.remove('show');
+
+const componentDB={
+ camera:['Camera Module','Electronic camera module with optical sensor, lens and indicator LED.','Captures the image used as AI input.','The image sensor converts incoming light into digital image data that can be processed by a classifier.','Provides visual evidence for identifying the waste item.','Without a usable image, visual classification becomes unreliable.','The indicator blinks during image capture.'],
+ moisture:['Moisture Sensor','Probe-based electronic sensing element.','Supports wet/dry identification.','The sensor responds to electrical properties associated with moisture around its probes.','Adds supporting evidence for organic/wet waste.','A failed sensor can remove an important supporting signal.','It reports HIGH for wet examples and LOW for dry examples.'],
+ metal:['Inductive Metal Sensor','Coil/electronic proximity sensing module.','Detects metallic objects.','An alternating electromagnetic field changes when conductive metal approaches the sensing field.','Helps identify metal objects such as a can.','A failed sensor may miss metallic objects.','It visibly changes to METAL DETECTED for the can.'],
+ load:['Load Cell + HX711','Strain-gauge load cell with signal-conditioning ADC.','Measures the mass of the waste item.','Applied force slightly deforms the strain gauges; electronics convert the tiny signal into a measurable value.','Provides mass data for the experiment.','Mass data would be unavailable or inaccurate.','The displayed gram value changes with the selected item.'],
+ controller:['ESP32 / Arduino','Microcontroller board built from a PCB and semiconductor components.','Acts as the main controller.','It receives sensor/classification information and controls outputs such as the servo and display.','Coordinates the smart-bin operation.','Sorting commands and display updates would not occur correctly.','The controller stage is highlighted after AI classification.'],
+ servo:['Servo Motor','Compact geared electric actuator with position control.','Moves the mechanical sorting flap.','A control signal commands a target angular position; the internal feedback system moves the shaft toward it.','Provides automatic physical routing.','The flap would not reach the selected chute.','Its angle is animated and shown in the telemetry panel.'],
+ lcd:['LCD / OLED','Small electronic visual display module.','Displays classification and system information.','Electronic pixels/segments change state according to commands from the controller.','Makes the system state understandable during demonstration.','The user would lose immediate visual feedback.','The browser HUD represents the changing display messages.'],
+ organic:['Organic Waste Container','Collection vessel for biodegradable feedstock.','Holds wet/organic material before recovery.','The material can be directed toward biological treatment.','Represents the wet-waste recovery starting point.','Contaminated feedstock can reduce treatment quality.','It visually connects to composting and digestion.'],
+ compostDetail2:['Composting Chamber','Enclosed process vessel representing aerobic biological treatment.','Represents composting of organic waste.','Microorganisms decompose organic matter in the presence of oxygen, producing stabilized compost.','Shows one resource-recovery route for wet waste.','Poor process conditions can slow decomposition.','The chamber and compost output are shown as a process concept.'],
+ digester:['Anaerobic Digestion Tank','Closed process vessel representing anaerobic biological treatment.','Represents biogas production from organic material.','Microorganisms break down organic matter without oxygen and produce a biogas stream.','Shows a second wet-waste recovery route.','Poor process conditions can reduce gas production.','A gas pipe leads to a storage representation; no flame is used.'],
+ pyrolysis:['Pyrolysis Concept Unit','Closed conceptual thermochemical processing vessel.','Represents controlled decomposition of suitable plastic without oxygen/in an inert atmosphere.','In real facilities, engineered heating and vapour-management systems convert feedstock into product streams under controlled conditions.','Shows the research pathway without creating a working hazardous reactor.','An unsafe or uncontrolled unit would pose serious hazards.','The simulation is deliberately non-operational.'],
+ condenser:['Condenser','Heat-exchange component represented as a cooling vessel.','Represents cooling of condensable vapours into liquid/wax.','A controlled cooling surface removes heat so condensable vapours can change phase.','Shows downstream product separation conceptually.','Condensation would be incomplete or inefficient.','The flow path leads to a collection container.'],
+ plasticCollection:['Plastic Collection','Collection bin for separated plastic feedstock.','Receives plastic after segregation.','Material is held before subsequent sorting and processing.','Represents the beginning of the plastic recovery pathway.','Mixed or unsuitable feedstock can reduce recovery quality.','The plastic stream is visually connected to sorting.'],
+ plasticSorting:['Sorting Section','Conceptual material-sorting station.','Represents preparation and sorting before size reduction.','Materials are separated into suitable feedstock categories before controlled processing.','Reduces unwanted contamination.','Poor sorting can introduce unsuitable material.','A labeled section precedes size reduction.'],
+ shred:['Size Reduction Concept','Conceptual enclosed size-reduction unit.','Represents reducing material size for controlled processing.','Mechanical equipment can reduce particle size; the simulation does not operate cutting machinery.','Shows the preparation stage.','Poor size control can affect downstream processing.','It is represented as a safe conceptual cylinder.']
+};
+function showComponent(key){
+ const d=componentDB[key];if(!d)return;
+ document.getElementById('infoTitle').textContent=d[0];
+ ['infoWhat','infoMaterial','infoFunction','infoHow','infoRole','infoFail','infoDemo'].forEach((id,i)=>document.getElementById(id).textContent=d[i+1]);
+ document.getElementById('info').classList.add('show');
+}
+
+/* Raycasting */
+const raycaster=new THREE.Raycaster(),mouse=new THREE.Vector2();
+renderer.domElement.addEventListener('pointerdown',e=>{
+ if(e.button!==0)return;
+ mouse.x=(e.clientX/innerWidth)*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;
+ raycaster.setFromCamera(mouse,camera);
+ const hits=raycaster.intersectObjects(clickable,true);
+ if(hits.length)showComponent(hits[0].object.userData.component);
+});
+
+function openModal(title,html){document.getElementById('modalTitle').textContent=title;document.getElementById('modalContent').innerHTML=html;document.getElementById('modal').classList.add('show')}
+document.getElementById('modalClose').onclick=()=>document.getElementById('modal').classList.remove('show');
+document.getElementById('realBtn').onclick=()=>openModal('HOW DOES IT WORK IN REAL LIFE?',[
+['1','User puts one waste item into the smart bin.'],['2','Camera captures the item.'],['3','Sensors provide supporting information.'],['4','AI classifies the object.'],['5','Controller receives the classification.'],['6','Servo rotates the sorting flap.'],['7','Waste falls into the appropriate compartment.'],['8','Wet waste can be directed toward composting or anaerobic digestion.'],['9','Suitable plastic can be sent to a controlled pyrolysis resource-recovery pathway.'],['10','Other materials can be recycled or safely disposed of.']
+].map(x=>`<div class="step"><div class="stepNo">${x[0]}</div><div>${x[1]}</div></div>`).join('')+
+'<p class="infoText">The browser model simulates the sensing, classification and routing sequence. It is an educational representation, not a certified waste-processing machine.</p>');
+document.getElementById('researchBtn').onclick=()=>openModal('ABOUT THE PROJECT',`
+<div class="infoLabel">Problem</div><p class="infoText">Mixed waste reduces the effectiveness of recycling and biological treatment.</p>
+<div class="infoLabel">Innovation</div><p class="infoText">Use camera + sensors + AI + automatic mechanical routing.</p>
+<div class="infoLabel">Research Objective</div><p class="infoText">Investigate whether intelligent source segregation improves waste-stream quality and recovery.</p>
+<div class="infoLabel">Hypothesis</div><p class="infoText">Intelligent source segregation can reduce contamination between waste streams and make each stream more suitable for recovery.</p>
+<div class="infoLabel">Expected Result</div><p class="infoText">Better segregation, lower contamination and measurable waste-stream data.</p>
+<div class="infoLabel">Central Principle</div><p class="infoText"><b>IDENTIFY FIRST, THEN SEND EACH WASTE STREAM TO THE MOST SUITABLE RECOVERY PATHWAY.</b></p>
+<div class="infoLabel">Safety</div><p class="infoText">The pyrolysis pathway is a process concept only. Actual high-temperature operation requires engineered equipment, controlled heating, vapour containment, pressure protection, ventilation and appropriate supervision. Do not ignite collected biogas or operate an improvised gas system. Waste handling should use appropriate safety practices.</p>`);
+window.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('modal').classList.remove('show');document.getElementById('info').classList.remove('show')}});
+
+function animate(){
+ requestAnimationFrame(animate);controls.update();
+ const t=performance.now()*.001;
+ particles.forEach((p,i)=>{
+   p.position.y += p.userData.speed*.008;
+   p.position.x += Math.sin(t*.7+p.userData.phase)*.0015;
+   if(p.position.y>6.5) p.position.y=.7;
+ });
+ pulseRing.scale.setScalar(1+.12*Math.sin(t*3));
+ pulseRing.material.opacity=.28+.18*(Math.sin(t*3)+1);
+ renderer.render(scene,camera);
+}
+animate();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+updateStats();
+</script>
+</body>
+</html>
