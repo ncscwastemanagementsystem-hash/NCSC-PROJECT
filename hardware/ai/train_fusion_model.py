@@ -58,7 +58,10 @@ def main() -> None:
 
     X, y = data[features], data[TARGET].astype(str)
     counts = y.value_counts()
-    stratify = y if counts.min() >= 2 else None
+    test_rows = int(round(len(y) * args.test_size))
+    train_rows = len(y) - test_rows
+    can_stratify = counts.min() >= 2 and test_rows >= y.nunique() and train_rows >= y.nunique()
+    stratify = y if can_stratify else None
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=args.test_size, random_state=42, stratify=stratify
     )
